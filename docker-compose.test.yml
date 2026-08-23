@@ -1,0 +1,17 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: dwrg_test
+      POSTGRES_USER: dwrg_test
+      POSTGRES_PASSWORD: dwrg_test_password
+      TZ: Asia/Shanghai
+    ports:
+      - "127.0.0.1:55432:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dwrg_test -d dwrg_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 20

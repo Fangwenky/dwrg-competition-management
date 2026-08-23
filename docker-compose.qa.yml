@@ -1,0 +1,44 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: dwrg_qa
+      POSTGRES_USER: dwrg_qa
+      POSTGRES_PASSWORD: dwrg_qa_password
+      TZ: Asia/Shanghai
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dwrg_qa -d dwrg_qa"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    networks: [qa-internal]
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://dwrg_qa:dwrg_qa_password@db:5432/dwrg_qa
+      APP_URL: http://127.0.0.1:3310
+      BOOTSTRAP_ADMIN_USERNAME: admin
+      BOOTSTRAP_ADMIN_PASSWORD: E2E_Admin_2026!
+      UPLOAD_DIR: /app/uploads
+      TZ: Asia/Shanghai
+    tmpfs:
+      - /app/uploads
+    ports:
+      - "127.0.0.1:3310:3300"
+    healthcheck:
+      test: ["CMD", "node", "scripts/healthcheck.mjs"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    networks: [qa-internal]
+
+networks:
+  qa-internal:
+    driver: bridge

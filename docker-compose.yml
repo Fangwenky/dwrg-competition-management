@@ -1,0 +1,51 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dwrg
+      POSTGRES_USER: dwrg
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: Asia/Shanghai
+    volumes:
+      - ${DWRG_DATA_DIR:-./data}/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dwrg -d dwrg"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+    mem_limit: 160m
+    cpus: 0.50
+    networks: [dwrg-internal]
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://dwrg:${POSTGRES_PASSWORD}@db:5432/dwrg
+      APP_URL: https://dwrg.fangwenky.dpdns.org
+      BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-admin}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD}
+      UPLOAD_DIR: /app/uploads
+      TZ: Asia/Shanghai
+      NODE_OPTIONS: --max-old-space-size=256
+    volumes:
+      - ${DWRG_DATA_DIR:-./data}/uploads:/app/uploads
+    ports:
+      - "127.0.0.1:3300:3300"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3300/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 20s
+      timeout: 5s
+      retries: 8
+      start_period: 45s
+    mem_limit: 320m
+    cpus: 1.0
+    networks: [dwrg-internal]
+
+networks:
+  dwrg-internal:
+    driver: bridge

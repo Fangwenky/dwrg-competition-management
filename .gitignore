@@ -1,0 +1,15 @@
+node_modules
+.next
+.env
+.env.local
+.cache
+*.tsbuildinfo
+coverage
+playwright-report
+test-results
+dogfood-output
+uploads/*
+!uploads/.gitkeep
+*.log
+.DS_Store
+.cache

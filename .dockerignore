@@ -1,0 +1,15 @@
+node_modules
+.next
+.git
+.env
+coverage
+dogfood-output
+playwright-report
+test-results
+tests
+playwright.config.ts
+.github
+docker-compose*.yml
+/uploads/*
+README.md
+Dockerfile
