@@ -9,7 +9,10 @@ async function submitLogin(page: Page, password: string) {
   await page.getByLabel("用户名").fill("admin");
   await page.getByLabel("密码").fill(password);
   await page.getByRole("button", { name: "进入赛事中枢" }).click();
-  await page.waitForLoadState("networkidle");
+  await Promise.race([
+    page.waitForURL((url) => url.pathname !== "/login", { timeout: 15_000 }),
+    page.locator('form [role="alert"]').waitFor({ state: "visible", timeout: 15_000 })
+  ]);
 }
 
 async function loginBootstrapAdmin(page: Page) {
@@ -24,11 +27,11 @@ async function loginBootstrapAdmin(page: Page) {
     await page.getByLabel("新密码", { exact: true }).fill(changedAdminPassword);
     await page.getByLabel("确认新密码").fill(changedAdminPassword);
     await page.getByRole("button", { name: "更新密码并退出其他会话" }).click();
-    await expect(page).toHaveURL(/\/login\?changed=1/);
+    await expect(page).toHaveURL(/\/login\?changed=1/, { timeout: 15_000 });
     await submitLogin(page, changedAdminPassword);
   }
 
-  await expect(page).toHaveURL(/\/me$/);
+  await expect(page).toHaveURL(/\/me$/, { timeout: 15_000 });
 }
 
 test.describe("isolated core competition workflow", () => {
