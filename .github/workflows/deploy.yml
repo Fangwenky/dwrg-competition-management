@@ -7,6 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -31,6 +32,21 @@ jobs:
       VPS_PORT: ${{ vars.VPS_PORT }}
       VPS_USER: ${{ vars.VPS_USER }}
     steps:
+      - name: Require a successful regression for manual deployment
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          conclusion="$(gh run list \
+            --repo "$GITHUB_REPOSITORY" \
+            --commit "$DEPLOY_SHA" \
+            --workflow ci.yml \
+            --event push \
+            --json conclusion \
+            --jq '[.[] | select(.conclusion == "success")][0].conclusion // ""')"
+          test "$conclusion" = "success"
+
       - uses: actions/checkout@v7
         with:
           ref: ${{ env.DEPLOY_SHA }}
