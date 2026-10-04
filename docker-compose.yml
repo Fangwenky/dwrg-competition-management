@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: dwrg
       POSTGRES_USER: dwrg
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       TZ: Asia/Shanghai
     volumes:
       - ${DWRG_DATA_DIR:-./data}/postgres:/var/lib/postgresql/data
@@ -26,9 +26,9 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgres://dwrg:${POSTGRES_PASSWORD}@db:5432/dwrg
-      APP_URL: https://dwrg.fangwenky.dpdns.org
+      APP_URL: ${APP_URL:-https://dwrg.fangwenky.dpdns.org}
       BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-admin}
-      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:?Set BOOTSTRAP_ADMIN_PASSWORD in .env}
       UPLOAD_DIR: /app/uploads
       TZ: Asia/Shanghai
       NODE_OPTIONS: --max-old-space-size=256

@@ -22,4 +22,5 @@ cleanup
 docker compose -p "$project_name" -f "$compose_file" up -d --wait
 pnpm db:migrate
 pnpm db:seed
+DWRG_INTEGRATION_TESTS=1 pnpm exec vitest run tests/integration
 pnpm exec playwright test "$@"

@@ -1,7 +1,11 @@
+import { existsSync } from "node:fs";
+import { loadEnvFile } from "node:process";
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import * as schema from "./schema";
 
+// CLI migrations and seeds need the same .env as Next.js; exported variables take precedence.
+if (existsSync(".env")) loadEnvFile(".env");
 const url = process.env.DATABASE_URL;
 if (!url) throw new Error("DATABASE_URL 未配置");
 

@@ -902,6 +902,9 @@ export async function saveMatchResult(_state: OpsState, formData: FormData): Pro
   }
   let winsA = 0, winsB = 0, totalA = 0, totalB = 0;
   try { await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`event-write:${match.eventId}`}))`);
+    const [currentEvent] = await tx.select({ status: events.status }).from(events).where(eq(events.id, match.eventId)).limit(1);
+    if (!currentEvent || ["COMPLETED", "ARCHIVED"].includes(currentEvent.status)) throw new Error("赛事已结束或归档，不能修改比赛结果");
     await tx.execute(sql`select ${matches.id} from ${matches} where ${matches.id} = ${matchId} for update`);
     const [currentMatch] = await tx.select({ status: matches.status }).from(matches).where(eq(matches.id, matchId)).limit(1);
     if (!currentMatch || currentMatch.status !== match.status) throw new Error("比赛状态已由其他管理员更新，请刷新后重试");
@@ -972,6 +975,7 @@ export async function saveMatchResult(_state: OpsState, formData: FormData): Pro
     const message = error instanceof Error ? error.message : "";
     const safeMessage = [
       "比赛状态已由其他管理员更新，请刷新后重试",
+      "赛事已结束或归档，不能修改比赛结果",
       "下一轮比赛已被撤销，请刷新赛程后重试",
       "双方局胜数相同，请选择人工裁定胜方并填写公开说明"
     ].includes(message) || message.startsWith("出场用户 ") ? message : "结果保存失败，请检查出场名单与角色";
@@ -1035,27 +1039,36 @@ export async function discardMatchResultDraft(formData: FormData) {
 
 export async function publishMatchResult(formData: FormData) {
   const matchId = formString(formData, "matchId");
-  const [match] = await db.select().from(matches).where(eq(matches.id, matchId)).limit(1);
+  let [match] = await db.select().from(matches).where(eq(matches.id, matchId)).limit(1);
   if (!match) redirect(invalidAction("比赛不存在或已被撤销"));
   const actor = await manager(match.eventId);
   const detailPath = (type: "error" | "success", message: string) => `/ops/${match.eventId}/matches/${matchId}?${new URLSearchParams({ [type]: message }).toString()}`;
   if (match.status !== "RESULT_DRAFT") redirect(detailPath("error", "只有结果草稿可以发布"));
-  const isParticipant = await db.$count(matchParticipants, and(eq(matchParticipants.matchId, matchId), eq(matchParticipants.userId, actor.id))) > 0;
-  if (isParticipant || await isOnTeam(actor.id, match.eventId, match.teamAId) || await isOnTeam(actor.id, match.eventId, match.teamBId)) redirect(detailPath("error", "参与本场比赛的赛事管理员不能发布结果"));
-  if (match.scoreA === match.scoreB && (!match.winnerSide || !match.manualReason)) redirect(detailPath("error", "同分时必须选择人工裁定胜方并填写公开说明"));
-  if (match.scoreA !== match.scoreB && !match.winnerSide) redirect(detailPath("error", "比赛胜方数据不完整，请重新保存结果草稿"));
-  if (match.bracketRound && !match.winnerTeamId) redirect(detailPath("error", "淘汰赛必须确定获胜战队后才能推进"));
   let advancedMatchId: string | null = null;
   let completedStage = false;
   try {
     const outcome = await db.transaction(async (tx) => {
+      // Serialize result changes with event status changes and other publications.
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`event-write:${match.eventId}`}))`);
+      const [currentEvent] = await tx.select({ status: events.status }).from(events).where(eq(events.id, match.eventId)).limit(1);
+      if (!currentEvent || ["COMPLETED", "ARCHIVED"].includes(currentEvent.status)) throw new Error("赛事已结束或归档，不能发布比赛结果");
+      const [currentMatch] = await tx.select().from(matches).where(eq(matches.id, matchId)).for("update");
+      if (!currentMatch || currentMatch.status !== "RESULT_DRAFT") throw new Error("结果状态已变化，请刷新后重试");
+      match = currentMatch;
+      const isParticipant = await tx.$count(matchParticipants, and(eq(matchParticipants.matchId, matchId), eq(matchParticipants.userId, actor.id))) > 0;
+      const teamIds = [match.teamAId, match.teamBId].filter((id): id is string => Boolean(id));
+      const isTeamMember = teamIds.length > 0 && await tx.$count(teamMembers, and(eq(teamMembers.eventId, match.eventId), eq(teamMembers.userId, actor.id), inArray(teamMembers.teamId, teamIds))) > 0;
+      if (isParticipant || isTeamMember) throw new Error("参与本场比赛的赛事管理员不能发布结果");
+      if (match.scoreA === match.scoreB && (!match.winnerSide || !match.manualReason)) throw new Error("同分时必须选择人工裁定胜方并填写公开说明");
+      if (match.scoreA !== match.scoreB && !match.winnerSide) throw new Error("比赛胜方数据不完整，请重新保存结果草稿");
+      if (match.bracketRound && !match.winnerTeamId) throw new Error("淘汰赛必须确定获胜战队后才能推进");
       const published = await tx.update(matches).set({ status: "PUBLISHED", publishedAt: new Date(), updatedAt: new Date() }).where(and(eq(matches.id, matchId), eq(matches.status, "RESULT_DRAFT"))).returning({ id: matches.id });
       if (!published.length) throw new Error("结果状态已变化，请刷新后重试");
       if (!match.stageId) return { nextMatchId: null, completed: false };
       const [stage] = await tx.select().from(stages).where(eq(stages.id, match.stageId)).limit(1);
       if (!stage) return { nextMatchId: null, completed: false };
       if (stage.type === "SINGLE_ELIMINATION" && match.bracketRound && match.winnerTeamId) {
-        const [next] = await tx.select().from(matches).where(and(eq(matches.stageId, stage.id), eq(matches.bracketRound, match.bracketRound + 1), eq(matches.bracketIndex, Math.floor(match.bracketIndex / 2)))).limit(1);
+        const [next] = await tx.select().from(matches).where(and(eq(matches.stageId, stage.id), eq(matches.bracketRound, match.bracketRound + 1), eq(matches.bracketIndex, Math.floor(match.bracketIndex / 2)))).limit(1).for("update");
         if (!next) {
           await tx.update(stages).set({ status: "COMPLETED" }).where(eq(stages.id, stage.id));
           return { nextMatchId: null, completed: true };
@@ -1078,6 +1091,11 @@ export async function publishMatchResult(formData: FormData) {
     const message = error instanceof Error ? error.message : "";
     const safeMessage = [
       "结果状态已变化，请刷新后重试",
+      "赛事已结束或归档，不能发布比赛结果",
+      "参与本场比赛的赛事管理员不能发布结果",
+      "同分时必须选择人工裁定胜方并填写公开说明",
+      "比赛胜方数据不完整，请重新保存结果草稿",
+      "淘汰赛必须确定获胜战队后才能推进",
       "下一轮对阵已被其他结果占用，请联系全局管理员核查淘汰树"
     ].includes(message) ? message : "发布结果失败，请刷新后重试";
     redirect(detailPath("error", safeMessage));

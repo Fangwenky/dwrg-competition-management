@@ -8,13 +8,15 @@
 
 ```bash
 cp .env.example .env
-docker-compose up -d db
+pnpm install --frozen-lockfile
+# 修改 .env 中的 POSTGRES_PASSWORD、DATABASE_URL 密码和管理员密码后：
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db
 pnpm db:migrate
 pnpm db:seed
 pnpm dev
 ```
 
-数据库迁移位于 `drizzle/`。首次种子会创建管理员、基础地图/角色以及一项可公开浏览的演示赛事。
+数据库迁移位于 `drizzle/`。迁移和种子命令会自动读取 `.env`，已导出的环境变量优先。本地数据库只监听 `127.0.0.1:5433`，开发数据保存在 `.local-data/`。首次种子会创建管理员、基础地图/角色以及一项可公开浏览的演示赛事。
 
 ## 验证
 
@@ -59,7 +61,7 @@ docker compose -p dwrg-qa -f docker-compose.qa.yml down --volumes
 
 ## 生产部署
 
-生产目录为 `/opt/dwrg/source`，数据存放在 `/opt/dwrg/data`。复制 `.env.example` 为 `.env`，设置随机的 PostgreSQL 密码、管理员密码及会话密钥，然后运行：
+生产目录为 `/opt/dwrg/source`，数据存放在 `/opt/dwrg/data`。复制 `.env.example` 为 `.env`，设置随机的 PostgreSQL 密码与管理员密码，并把 `DWRG_DATA_DIR` 改为 `/opt/dwrg/data`、`APP_URL` 改为 `https://dwrg.fangwenky.dpdns.org`。PostgreSQL 密码建议使用随机十六进制字符串，以便直接用于连接串。生产容器使用 Compose 注入的数据库连接串，无需会话签名密钥。然后运行：
 
 ```bash
 docker-compose up -d --build
