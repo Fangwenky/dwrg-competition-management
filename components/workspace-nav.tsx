@@ -13,6 +13,8 @@ const userLinks = [
 
 export function UserNav({ counts = {} }: { counts?: Partial<Record<"applications" | "assignments" | "notifications" | "teams", number>> }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const currentHref = userLinks.find(([href]) => href === "/me" ? pathname === href : pathname.startsWith(href))?.[0] ?? "/me";
   const countByHref: Record<string, number | undefined> = {
     "/me/applications": counts.applications,
     "/me/teams": counts.teams,
@@ -24,6 +26,7 @@ export function UserNav({ counts = {} }: { counts?: Partial<Record<"applications
       <span className="data-label text-[#aebbd1]">PERSONAL DESK</span>
       <strong>个人赛事工作台</strong>
     </div>
+    <div className="workspace-mobile-nav lg:hidden"><label htmlFor="workspace-section">个人工作台 · 切换栏目</label><select id="workspace-section" value={currentHref} onChange={(event) => router.push(event.target.value)}>{userLinks.map(([href,label]) => <option value={href} key={href}>{label}{countByHref[href] ? ` · ${countByHref[href]} 项待处理` : ""}</option>)}</select></div>
     <nav className="user-rail-nav" aria-label="用户中心">{userLinks.map(([href,label,Icon]) => {
       const active = href === "/me" ? pathname === href : pathname.startsWith(href);
       const count = countByHref[href];

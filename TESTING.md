@@ -8,7 +8,7 @@
 | 规则单元测试 | `pnpm test:coverage` | 权限、赛制、积分、工作流、限流配置；带覆盖率门槛 | 否 |
 | 生产构建 | `pnpm build` | Next.js 编译、页面数据收集、standalone 产物 | 否 |
 | 数据库事务回归 | `pnpm test:e2e` 内自动执行 | 并发晋级、草稿更新与阶段完成；真实 PostgreSQL 事务 | 仅写临时数据库 |
-| 本地端到端 | `pnpm test:e2e` | 迁移、种子、注册登录、权限、赛事创建、身份审批、阶段编排、排赛、结构化赛果发布、桌面/移动端、无障碍 | 仅写临时数据库 |
+| 本地端到端 | `pnpm test:e2e` | 迁移、种子、注册登录、权限、报名与资料返回、身份审批、建队与队员邀请、通知、阶段编排、排赛、赛果校验与发布、桌面/移动端、无障碍 | 仅写临时数据库 |
 | 线上冒烟 | `PLAYWRIGHT_BASE_URL=https://dwrg.fangwenky.dpdns.org pnpm test:smoke` | 健康检查、公开页面、响应式、无障碍、认证页限流 | 否 |
 
 `pnpm test:all` 是提交或部署前的总入口。GitHub Actions 会在每次 push 和

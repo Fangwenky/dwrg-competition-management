@@ -31,7 +31,7 @@ export async function registerAction(_state: AuthState, formData: FormData): Pro
   if (!user) return { error: "该用户名已被使用" };
   await createSession(user.id);
   await audit({ actorId: user.id, action: "USER_REGISTERED", entityType: "user", entityId: user.id });
-  redirect("/me");
+  redirect(safeNextPath(formString(formData, "next"), "/me"));
 }
 
 export async function loginAction(_state: AuthState, formData: FormData): Promise<AuthState> {

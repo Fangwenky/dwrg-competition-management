@@ -22,7 +22,7 @@ export function EventCard({ event }: { event: Event & { heroUrl?: string | null 
       <div className="relative flex h-full flex-1 flex-col">
       <div className="flex items-start justify-between gap-4"><span className="font-data text-xs font-extrabold uppercase tracking-[.22em] text-[#c6d5ed]">EVENT FILE / {event.slug.slice(0, 8)}</span><StatusBadge status={event.status} /></div>
       <div className="my-auto py-8">
-        <h2 className="font-display text-3xl font-black leading-none drop-shadow-lg">{event.name}</h2>
+        <h3 className="font-display text-3xl font-black leading-tight drop-shadow-lg">{event.name}</h3>
         <p className="mt-3 text-sm text-[#d3dbea]">{event.tagline || "赛事规则与对局记录已归档"}</p>
       </div>
       <div className="flex items-center justify-between border-t border-white/20 pt-4 text-sm text-[#d6dfed]">

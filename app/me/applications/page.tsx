@@ -34,7 +34,7 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
         <div className="mb-4 flex items-center gap-3"><span className="step-index">01</span><div><span className="data-label">NEW APPLICATION</span><h2 className="font-display text-xl font-bold" id="new-application-title">发起申请</h2></div></div>
         {events.length ? <>
           <form className="mb-4 grid gap-3 sm:grid-cols-[1fr_auto]" method="get">
-            <div><label className="label" htmlFor="event-switch">申请赛事</label><select id="event-switch" name="event" className="input" defaultValue={eventId}>{events.map((event) => <option value={event.id} key={event.id}>{event.name}</option>)}</select></div>
+            <div><label className="label" htmlFor="event-switch">申请赛事</label><input type="hidden" name="role" value={initialRole} /><select id="event-switch" name="event" className="input" defaultValue={eventId}>{events.map((event) => <option value={event.id} key={event.id}>{event.name}</option>)}</select></div>
             <button className="button-secondary self-end">切换赛事</button>
           </form>
           <div className="mb-4 border border-line bg-[#edf1f8] px-4 py-3 text-sm text-[#5d687d]"><strong className="text-ink">当前赛事：</strong>{selectedEvent?.name}</div>
@@ -59,7 +59,7 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
           </div>
         </article>)}</div> : <div className="empty-guidance min-h-[150px]">
           <ClipboardList className="text-gold" size={28} />
-          <div><h3 className="font-display text-xl font-bold">还没有赛事申请</h3><p className="mt-1 text-sm text-[#5d687d]">从左侧选择赛事和身份，提交后可在这里追踪审核进度。</p></div>
+          <div><h3 className="font-display text-xl font-bold">还没有赛事申请</h3><p className="mt-1 text-sm text-[#5d687d]">选择赛事和身份，提交后可在这里追踪审核进度。</p></div>
           {playerProfileComplete && <CheckCircle2 className="text-[#4f725f] xl:ml-auto" size={22} aria-label="选手资料已就绪" />}
         </div>}
       </section>

@@ -1,39 +1,7 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { loginBootstrapAdmin } from "./helpers";
 
 const mutatingExternalRun = Boolean(process.env.PLAYWRIGHT_BASE_URL) && process.env.ALLOW_MUTATING_E2E === "1";
-const initialAdminPassword = process.env.E2E_ADMIN_INITIAL_PASSWORD ?? "E2E_Admin_2026!";
-const changedAdminPassword = process.env.E2E_ADMIN_PASSWORD ?? "E2E_Admin_Changed_2026!";
-
-async function submitLogin(page: Page, password: string) {
-  await page.goto("/login");
-  await page.getByLabel("用户名").fill("admin");
-  await page.getByLabel("密码").fill(password);
-  await page.getByRole("button", { name: "进入赛事中枢" }).click();
-  await Promise.race([
-    page.waitForURL((url) => url.pathname !== "/login", { timeout: 15_000 }),
-    page.locator('form [role="alert"]').waitFor({ state: "visible", timeout: 15_000 })
-  ]);
-}
-
-async function loginBootstrapAdmin(page: Page) {
-  await submitLogin(page, initialAdminPassword);
-
-  if (await page.locator('form [role="alert"]').isVisible()) {
-    await submitLogin(page, changedAdminPassword);
-  }
-
-  if (/\/me\/security/.test(page.url())) {
-    await page.getByLabel("当前密码").fill(initialAdminPassword);
-    await page.getByLabel("新密码", { exact: true }).fill(changedAdminPassword);
-    await page.getByLabel("确认新密码").fill(changedAdminPassword);
-    await page.getByRole("button", { name: "更新密码并退出其他会话" }).click();
-    await expect(page).toHaveURL(/\/login\?changed=1/, { timeout: 15_000 });
-    await submitLogin(page, changedAdminPassword);
-  }
-
-  await expect(page).toHaveURL(/\/me$/, { timeout: 15_000 });
-}
-
 test.describe("isolated core competition workflow", () => {
   test.skip(Boolean(process.env.PLAYWRIGHT_BASE_URL) && !mutatingExternalRun, "deployed smoke tests must not mutate production data");
 
@@ -152,6 +120,14 @@ test.describe("isolated core competition workflow", () => {
         await adminPage.locator(`select[name="hunter_${half}_1"]`).selectOption({ index: 5 });
         await adminPage.locator(`select[name="hunter_char_${half}_1"]`).selectOption({ index: 1 });
       }
+      await expect(adminPage.getByLabel("第 1 局积分预览")).toContainText("10 : 0");
+      const duplicate = await adminPage.locator('select[name="survivor_1_1_1"]').inputValue();
+      await adminPage.locator('select[name="survivor_1_1_2"]').selectOption(duplicate);
+      await adminPage.getByRole("button", { name: "保存结果草稿" }).click();
+      await expect(adminPage.locator('form [role="alert"]')).toBeVisible();
+      await expect(adminPage.getByLabel("比赛地图")).not.toHaveValue("");
+      await expect(adminPage.locator('select[name="survivor_1_1_1"]')).toHaveValue(duplicate);
+      await adminPage.locator('select[name="survivor_1_1_2"]').selectOption({ index: 2 });
       await adminPage.getByRole("button", { name: "保存结果草稿" }).click();
       await expect(adminPage.locator('form [role="status"]')).toHaveText("比赛结果已保存为草稿");
 
@@ -159,7 +135,7 @@ test.describe("isolated core competition workflow", () => {
       await expect(adminPage.getByRole("button", { name: "确认并发布结果" })).toBeVisible();
       adminPage.once("dialog", (dialog) => dialog.accept());
       await adminPage.getByRole("button", { name: "确认并发布结果" }).click();
-      await expect(adminPage.getByRole("status")).toHaveText("比赛结果已发布到公开档案");
+      await expect(adminPage.locator('p[role="status"]')).toHaveText("比赛结果已发布到公开档案");
 
       await adminPage.goto(`/matches/${matchId}`);
       await expect(adminPage.getByRole("heading", { level: 1, name: "比赛档案" })).toBeVisible();

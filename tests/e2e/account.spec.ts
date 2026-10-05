@@ -37,11 +37,15 @@ test.describe("local account lifecycle", () => {
     await page.getByLabel("确认密码").fill("Different_2026!");
     await page.getByRole("button", { name: "创建账号" }).click();
     await expect(page.locator('form [role="alert"]')).toHaveText("两次输入的密码不一致");
+    await expect(page.getByLabel("用户名")).toHaveValue("qa_validation");
+    await expect(page.getByLabel("显示名称")).toHaveValue("验证用户");
+    await expect(page.getByLabel("密码", { exact: true })).toHaveValue("Regression_2026!");
 
     await page.goto("/login");
     await page.getByLabel("用户名").fill("qa_user_does_not_exist");
     await page.getByLabel("密码").fill("WrongPassword_2026!");
     await page.getByRole("button", { name: "进入赛事中枢" }).click();
     await expect(page.locator('form [role="alert"]')).toHaveText("用户名或密码不正确");
+    await expect(page.getByLabel("用户名")).toHaveValue("qa_user_does_not_exist");
   });
 });

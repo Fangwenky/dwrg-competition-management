@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { reviewApplication } from "@/app/actions/ops";
 import { getEventApplications } from "@/lib/queries";
 import { requirePageUser } from "@/lib/auth";
@@ -7,11 +8,16 @@ import { FormSubmitButton } from "@/components/form-submit-button";
 
 export default async function OpsApplicationsPage({ params, searchParams }: {
   params: Promise<{ eventId: string }>;
-  searchParams: Promise<{ error?: string; success?: string }>;
+  searchParams: Promise<{ error?: string; success?: string; status?: string; role?: string }>;
 }) {
   const { eventId } = await params;
   const [feedback, actor, items] = await Promise.all([searchParams, requirePageUser(`/ops/${eventId}/applications`), getEventApplications(eventId)]);
   const pending = items.filter(({ application }) => application.status === "PENDING").length;
+  const statusOptions = ["ALL", "PENDING", "APPROVED", "REJECTED", "WITHDRAWN"];
+  const status = statusOptions.includes(feedback.status ?? "") ? feedback.status! : pending ? "PENDING" : "ALL";
+  const role = ["PLAYER", "COMMENTATOR", "REFEREE"].includes(feedback.role ?? "") ? feedback.role! : "ALL";
+  const visible = items.filter(({ application }) => (status === "ALL" || application.status === status) && (role === "ALL" || application.role === role))
+    .sort((a, b) => Number(b.application.status === "PENDING") - Number(a.application.status === "PENDING"));
 
   return <div>
     <div className="flex flex-wrap items-end justify-between gap-4">
@@ -20,8 +26,13 @@ export default async function OpsApplicationsPage({ params, searchParams }: {
     </div>
     {feedback.error && <p className="mt-6 border border-danger/40 bg-[#f6e4ea] px-4 py-3 text-sm font-semibold text-danger" role="alert">{feedback.error}</p>}
     {feedback.success && <p className="mt-6 border border-[#52755f] bg-[#e2eee8] px-4 py-3 text-sm font-semibold text-[#31533c]" role="status">{feedback.success}</p>}
-    <div className="mt-7 space-y-4">
-      {items.length ? items.map(({ application, user, rankScreenshotUrl }) => {
+    <div className="mt-6 space-y-3 border border-line bg-[#edf1f8] p-4">
+      <nav className="flex flex-wrap gap-2" aria-label="审核状态">{[["PENDING", "待审核"], ["ALL", "全部记录"], ["APPROVED", "已通过"], ["REJECTED", "已拒绝"], ["WITHDRAWN", "已撤销"]].map(([value, label]) => <Link className={status === value ? "button-primary" : "button-secondary"} href={`/ops/${eventId}/applications?${new URLSearchParams({ status: value, role })}`} aria-current={status === value ? "page" : undefined} key={value}>{label}</Link>)}</nav>
+      <nav className="flex flex-wrap gap-x-5" aria-label="申请角色">{[["ALL", "全部角色"], ["PLAYER", "选手"], ["COMMENTATOR", "解说"], ["REFEREE", "裁判"]].map(([value, label]) => <Link className={`inline-flex min-h-11 items-center text-sm ${role === value ? "font-bold text-plum underline underline-offset-4" : "text-[#5d687d]"}`} href={`/ops/${eventId}/applications?${new URLSearchParams({ status, role: value })}`} aria-current={role === value ? "page" : undefined} key={value}>{label}</Link>)}</nav>
+    </div>
+    <p className="mt-4 text-sm text-[#5d687d]">当前显示 {visible.length} 项 · 全部 {items.length} 项；待审核申请优先显示。</p>
+    <div className="mt-4 space-y-4">
+      {visible.length ? visible.map(({ application, user, rankScreenshotUrl }) => {
         const isOwnApplication = application.userId === actor.id;
         return <article className="card" key={application.id}>
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -42,7 +53,7 @@ export default async function OpsApplicationsPage({ params, searchParams }: {
               <FormSubmitButton className="button-primary" name="decision" value="APPROVED" pendingLabel="正在提交审核…">通过申请</FormSubmitButton>
             </form>)}
         </article>;
-      }) : <EmptyState title="没有待处理申请" description="新申请到达后会按时间显示。" />}
+      }) : <EmptyState title="当前筛选下没有申请" description="可切换到全部记录查看历史审核，新的待审核申请会优先显示。" action={<Link className="button-secondary" href={`/ops/${eventId}/applications?status=ALL`}>查看全部记录</Link>} />}
     </div>
   </div>;
 }

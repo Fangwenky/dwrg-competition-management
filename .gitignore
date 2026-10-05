@@ -9,6 +9,7 @@ coverage
 playwright-report
 test-results
 dogfood-output
+.design/**/screenshots/
 uploads/*
 !uploads/.gitkeep
 *.log
