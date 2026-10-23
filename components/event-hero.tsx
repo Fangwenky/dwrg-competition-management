@@ -21,7 +21,11 @@ type EventHeroProps = {
   heroSourceUrl?: string | null;
 };
 
-export function EventHero({
+export function EventHero(props: EventHeroProps) {
+  return <EventHeroContent key={props.heroUrl} {...props} />;
+}
+
+function EventHeroContent({
   slug,
   name,
   tagline,
@@ -39,7 +43,6 @@ export function EventHero({
   const pathname = usePathname();
   const [heroFailed, setHeroFailed] = useState(false);
   useEffect(() => {
-    setHeroFailed(false);
     if (!heroUrl) return;
     const image = new Image();
     image.onerror = () => setHeroFailed(true);

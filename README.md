@@ -6,6 +6,8 @@
 
 ## 本地开发
 
+使用 Node.js 24 LTS 和 pnpm 10.15.0；生产镜像使用相同的 Node.js 版本系列。
+
 ```bash
 cp .env.example .env
 pnpm install --frozen-lockfile
@@ -70,11 +72,11 @@ curl -fsS http://127.0.0.1:3300/api/health
 
 将 `deploy/nginx-dwrg.conf` 安装为独立站点，验证配置后使用 Certbot 为 `dwrg.fangwenky.dpdns.org` 签发证书。`deploy/backup.sh` 应通过 root 的 cron 每日执行。会话使用数据库持久化的 256 位随机不透明令牌，服务端只保存 SHA-256 摘要，因此不需要额外的会话签名密钥。
 
-GitHub 的 `regression` 工作流会在每次推送和 pull request 上运行完整质量门禁。
-`main` 分支回归成功后，`deploy-production` 会使用专用 VPS 密钥上传不可变版本，
-执行部署前备份、镜像构建、服务替换和健康检查；部署失败会恢复上一份源码及镜像。
-生产数据库密码和管理员密码只保留在 VPS 的 `/opt/dwrg/source/.env`，不会进入
-GitHub。也可在 GitHub Actions 中手动运行 `deploy-production` 重新部署当前提交。
+当前未启用 GitHub Actions。发布前先执行 `pnpm test:all`，将验证通过的提交推送到
+`main`，再将该提交的源码（不含 `.env`、`.git`）上传到 VPS 的
+`/opt/dwrg/incoming/<完整提交号>/`，执行 `/usr/local/sbin/dwrg-deploy <完整提交号>`。
+该脚本执行部署前备份、镜像构建、服务替换和健康检查；部署失败会恢复上一份源码及镜像。
+生产数据库密码和管理员密码只保留在 VPS 的 `/opt/dwrg/source/.env`，不会进入 GitHub。
 
 ## 核心规则
 

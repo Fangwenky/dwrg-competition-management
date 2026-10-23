@@ -11,8 +11,8 @@
 | 本地端到端 | `pnpm test:e2e` | 迁移、种子、注册登录、权限、报名与资料返回、身份审批、建队与队员邀请、通知、阶段编排、排赛、赛果校验与发布、桌面/移动端、无障碍 | 仅写临时数据库 |
 | 线上冒烟 | `PLAYWRIGHT_BASE_URL=https://dwrg.fangwenky.dpdns.org pnpm test:smoke` | 健康检查、公开页面、响应式、无障碍、认证页限流 | 否 |
 
-`pnpm test:all` 是提交或部署前的总入口。GitHub Actions 会在每次 push 和
-pull request 上执行质量门禁和隔离端到端测试，并在失败时上传截图、视频和 trace。
+`pnpm test:all` 是提交或部署前的总入口。当前未启用 GitHub Actions，发布前需在
+本地执行完整回归；失败时的截图、视频和 trace 保存在本地测试报告目录。
 
 ## 本地端到端环境
 

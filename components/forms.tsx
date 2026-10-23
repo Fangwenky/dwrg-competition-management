@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import { applyForRole, applyToJoinTeam, createTeam, inviteTeamMember, type ActionState } from "@/app/actions/event";
 import { loginAction, registerAction, changePasswordAction, type AuthState } from "@/app/actions/auth";
 import { createEvent, createIndividualMatch, createManualTeamMatch, createStage, updateEventSettings, type OpsState } from "@/app/actions/ops";
@@ -22,9 +22,12 @@ export function RegisterForm({ next = "/me" }: { next?: string }) {
 }
 
 export function RoleApplicationForm({ eventId, playerProfileComplete, initialRole = "PLAYER" }: { eventId: string; playerProfileComplete: boolean; initialRole?: "PLAYER" | "COMMENTATOR" | "REFEREE" }) {
-  const [state, action, pending] = useActionState<ActionState, FormData>(applyForRole, {});
   const [role, setRole] = useState(initialRole);
-  useEffect(() => { if (state.success) setRole(initialRole); }, [initialRole, state.success]);
+  const [state, action, pending] = useActionState<ActionState, FormData>(async (previousState, formData) => {
+    const result = await applyForRole(previousState, formData);
+    if (result.success) setRole(initialRole);
+    return result;
+  }, {});
   return <form action={action} ref={preserveFormValues} className="card space-y-4"><input type="hidden" name="eventId" value={eventId} /><Message state={state} /><div><label className="label" htmlFor="role">申请身份</label><select className="input" id="role" name="role" value={role} onChange={(event) => setRole(event.target.value as typeof role)}><option value="PLAYER">选手</option><option value="COMMENTATOR">解说</option><option value="REFEREE">裁判</option></select></div>{role === "PLAYER" && <div className={`border-l-4 p-4 text-sm ${playerProfileComplete ? "border-[#52755f] bg-[#e2eee4] text-[#31533c]" : "border-gold bg-parchment"}`}><strong>{playerProfileComplete ? "将使用已保存的竞技资料报名" : "竞技资料尚未完成"}</strong><p className="mt-1">游戏 UID、游戏昵称、双阵营段位和证明截图只需在个人资料中维护一次。</p>{!playerProfileComplete && <a className="mt-2 inline-flex min-h-11 items-center font-semibold text-plum underline" href={`/me/profile?next=${encodeURIComponent(`/me/applications?event=${eventId}&role=PLAYER`)}`}>前往个人资料</a>}</div>}{role === "COMMENTATOR" && <><div><label className="label" htmlFor="commentator-experience">解说经历</label><textarea className="input min-h-28" id="commentator-experience" name="experience" required /></div><div><label className="label" htmlFor="portfolio-url">作品链接</label><input className="input" id="portfolio-url" name="portfolioUrl" type="url" inputMode="url" placeholder="https://" required /></div></>}{role === "REFEREE" && <><div><label className="label" htmlFor="referee-experience">执裁经历</label><textarea className="input min-h-28" id="referee-experience" name="experience" required /></div><div><label className="label" htmlFor="availability">可用时间</label><textarea className="input min-h-24" id="availability" name="availability" placeholder="例如：周末 18:00–23:00" required /></div></>}<button className="button-primary w-full sm:w-auto" disabled={pending || (role === "PLAYER" && !playerProfileComplete)}>{pending ? "正在提交…" : role === "PLAYER" ? "报名选手" : `申请成为${role === "COMMENTATOR" ? "解说" : "裁判"}`}</button></form>;
 }
 
